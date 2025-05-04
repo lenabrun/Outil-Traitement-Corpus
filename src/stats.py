@@ -35,23 +35,21 @@ class EntityStats:
 
     def process_corpus(self):
         """
-        Parcourt tous les fichiers texte du corpus et extrait les entités nommées.
+        Parcourt tout le corpus et extrait les entités nommées.
         """
-        txt_files = list(self.corpus_dir.glob("*.txt"))
-        if not txt_files:
-            print(f"Aucun fichier trouvé dans {self.corpus_dir}")
+        df = pd.read_csv(self.corpus_dir, encoding="utf-8")
+        if 'clean_text' not in df.columns:
+            print(f"La colonne 'clean_text' est absente du fichier.")
             return
         
-        for file in txt_files:
-            with file.open(encoding="utf-8") as f:
-                text = f.read().strip()
-                doc = self.nlp(text)
-                ents = doc.ents
+        for text in df['clean_text'].dropna():
+            doc = self.nlp(text)
+            ents = doc.ents
 
-                self.total_entities += len(ents)
-                self.entities_per_doc.append(len(ents))
-                self.entity_labels.extend([ent.label_ for ent in ents])
-                self.entity_texts.extend([ent.text for ent in ents])
+            self.total_entities += len(ents)
+            self.entities_per_doc.append(len(ents))
+            self.entity_labels.extend([ent.label_ for ent in ents])
+            self.entity_texts.extend([ent.text for ent in ents])
 
     def compute_statistics(self) -> Tuple[int, float, Counter, Counter]:
         """
@@ -84,7 +82,7 @@ class EntityStats:
 
         print ("\nRépartition des types d'entités :")
         for label, count in label_counts.items():
-            print(f"{text}: {count}")
+            print(f"{label}: {count}")
 
     def plot_entity_distribution(self, label_counts: Counter):
         """
@@ -110,7 +108,7 @@ def main():
     """
     Point d'entrée du script pour le calcul de statistiques d'entités nommées.
     """
-    corpus_path = Path("../data/clean")
+    corpus_path = Path("../data/clean/corpus.csv")
     stats = EntityStats(corpus_path)
     stats.process_corpus()
     num_docs, avg_entities, label_counts, text_counts = stats.compute_statistics()

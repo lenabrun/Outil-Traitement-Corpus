@@ -1,3 +1,18 @@
+"""
+Script principal pour le traitement d'un corpus médical en français.
+
+Ce script exécute les étapes suivantes :
+1. Scraping d'articles depuis la section santé du site The Conversation.
+2. Prétraitement du texte : nettoyage, lemmatisation, suppression des stop words et de la ponctuation.
+3. Extraction d'entités nommées à l'aide de spaCy et calcul de statistiques.
+4. Visualisation de la distribution des entités extraites.
+
+Modules utilisés :
+- ArticleScraper : pour collecter et sauvegarder les articles.
+- TextPreprocessor : pour nettoyer et lemmatiser le texte.
+- EntityStats : pour extraire les entités nommées et générer des statistiques.
+"""
+
 from pathlib import Path
 from src.scraper import ArticleScraper
 from src.preprocess import TextPreprocessor
@@ -18,7 +33,7 @@ def main():
     preprocessor.process_corpus()
 
     # Calculer des statistiques
-    stats = EntityStats("../data/clean/corpus.csv")
+    stats = EntityStats(Path("../data/clean/corpus.csv"))
     stats.process_corpus()
     num_docs, avg_entities, label_counts, text_counts = stats.compute_statistics()
     stats.display_results(num_docs, avg_entities, label_counts, text_counts)

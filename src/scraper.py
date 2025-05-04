@@ -1,3 +1,12 @@
+"""
+Module de scraping d'articles depuis la section santé du site The Conversation.
+
+Ce module définit la classe ArticleScraper qui permet de :
+- collecter les URLs des articles à partir d'une URL paginée,
+- extraire et sauvegarder localement le contenu textuel des articles,
+- compiler les articles dans un fichier CSV pour un traitement ultérieur.
+"""
+
 import requests
 from bs4 import BeautifulSoup
 import time
