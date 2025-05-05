@@ -1,11 +1,3 @@
-# NERurse_Fr – Extraction d'Entités Nommées Médicales en Français
-
-*NERurse_Fr** est un projet de traitement automatique du langage naturel visant à extraire des entités nommées du domaine médical dans des textes en français.
-
----
-
-## Métadonnées
-
 language: fr
 multilinguality: monolingual
 pretty_name: NERurse_Fr
@@ -20,11 +12,9 @@ tags:
 
 ---
 
-# Analyse des Entités Nommées dans un Corpus Médical
+# NERurse_Fr – Extraction d'Entités Nommées Médicales en Français
 
-## Introduction
-
-Ce projet analyse un corpus de textes appartenant au domaine de la santé en français pour permettre l'extraction d'entités nommées spécialisées au domaine médical.
+*NERurse_Fr* est un projet de traitement automatique du langage naturel visant à extraire des entités nommées du domaine médical dans des textes en français.
 
 ## Structure du projet
 
@@ -36,7 +26,7 @@ Ce projet analyse un corpus de textes appartenant au domaine de la santé en fra
 
 ## Description
 
-Ce corpus **NERurse_Fr** est constitué d'articles français issus de la section [Santé](https://theconversation.com/fr/sante) du site [The Conversation](https://theconversation.com/fr) avec pour objectif l'**extraction d'entités nommées** spécialisées dans le **domaine médical**.
+Ce corpus *NERurse_Fr* est constitué d'articles français issus de la section [Santé](https://theconversation.com/fr/sante) du site [The Conversation](https://theconversation.com/fr) avec pour objectif l'extraction d'entités nommées spécialisées dans le **domaine médical.
 
 ## Structure du corpus
 
