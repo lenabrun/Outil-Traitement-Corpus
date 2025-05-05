@@ -1,7 +1,12 @@
-language: fr
-multilinguality: monolingual
-pretty_name: NERurse_Fr
-size_categories: 10K<n<100K
+---
+language:
+    - fr
+multilinguality:
+    - monolingual
+pretty_name:
+    - NERurse_Fr
+size_categories:
+    - 10K<n<100K
 task_categories:
     - named-entity-recognition
 task_ids:
@@ -9,10 +14,9 @@ task_ids:
 tags:
     - medical
     - ner
-
 ---
 
-# NERurse_Fr – Extraction d'Entités Nommées Médicales en Français
+# NERurse_Fr
 
 *NERurse_Fr* est un projet de traitement automatique du langage naturel visant à extraire des entités nommées du domaine médical dans des textes en français.
 
@@ -26,7 +30,7 @@ tags:
 
 ## Description
 
-Ce corpus *NERurse_Fr* est constitué d'articles français issus de la section [Santé](https://theconversation.com/fr/sante) du site [The Conversation](https://theconversation.com/fr) avec pour objectif l'extraction d'entités nommées spécialisées dans le **domaine médical.
+Ce corpus *NERurse_Fr* est constitué d'articles français issus de la section [Santé](https://theconversation.com/fr/sante) du site [The Conversation](https://theconversation.com/fr) avec pour objectif l'extraction d'entités nommées spécialisées dans le domaine médical.
 
 ## Structure du corpus
 
@@ -39,9 +43,9 @@ Le fichier `corpus.csv` contient les colonnes suivantes :
 
 ## Compte des labels
 
-**Nombre de documents** : 3350
-**Nombre total d'entités** : 71300
-**Nombre moyen d'entités par document** : 21.28
+Nombre de documents : 3350  
+Nombre total d'entités : 71300  
+Nombre moyen d'entités par document : 21.28  
 
 - MISC: 13350
 - LOC: 28050
