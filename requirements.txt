@@ -1,1 +1,6 @@
- 
+beautifulsoup4==4.13.4
+matplotlib==3.10.1
+pandas==2.2.3
+requests==2.32.3
+spacy==3.8.4
+fr_core_news_sm @ https://github.com/explosion/spacy-models/releases/download/fr_core_news_sm-3.8.0/fr_core_news_sm-3.8.0-py3-none-any.whl
