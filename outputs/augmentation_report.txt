@@ -1,0 +1,6 @@
+
+Statistiques d'augmentation du corpus :
+Corpus original : 97525 documents
+Corpus augmenté : 195050 documents
+Augmentation absolue : +97525 documents
+Augmentation relative : x2.00 fois

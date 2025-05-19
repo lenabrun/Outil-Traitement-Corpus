@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from collections import Counter
 from pathlib import Path
 from typing import List, Tuple
+import ast
 
 class EntityStats:
     """
@@ -103,6 +104,85 @@ class EntityStats:
         plt.xticks(rotation=45)
         plt.tight_layout()
         plt.show()
+
+    @staticmethod
+    def augmentation_stats(original_csv: Path, augmented_csv: Path, save_to: Path = None):
+        """
+        Compare la taille du corpus original et du corpus augmenté.
+
+        :param original_csv: chemin vers le fichier CSV original
+        :param augmented_csv: chemin vers le fichier CSV augmenté
+        """
+        df_orig = pd.read_csv(original_csv)
+        df_aug = pd.read_csv(augmented_csv)
+
+        n_orig = len(df_orig)
+        n_aug = len(df_aug)
+
+        augmentation_absolute = n_aug - n_orig
+        augmentation_relative = (n_aug / n_orig) if n_orig > 0 else float('inf')
+
+        report = (
+            f"\nStatistiques d'augmentation du corpus :\n"
+            f"Corpus original : {n_orig} documents\n"
+            f"Corpus augmenté : {n_aug} documents\n"
+            f"Augmentation absolue : +{augmentation_absolute} documents\n"
+            f"Augmentation relative : x{augmentation_relative:.2f} fois\n"
+        )
+    
+        print(report)
+
+        if save_to:
+            with open(save_to, "w", encoding="utf-8") as f:
+                f.write(report)
+
+    def process_bio_annotated_csv(self):
+        """
+        Extrait les entités nommées à partir d'un fichier CSV contenant les colonnes 'tokens' et 'ner_tags'.
+        """
+        df = pd.read_csv(self.corpus_dir, encoding="utf-8")
+        if not {"tokens", "ner_tags"}.issubset(df.columns):
+            print("Les colonnes 'tokens' et 'ner_tags' sont absentes du fichier.")
+            return
+
+        for tokens, tags in zip(df["tokens"], df["ner_tags"]):
+            # Évalue les chaînes littérales (si les colonnes sont enregistrées comme listes de str)
+            tokens = ast.literal_eval(tokens)
+            tags = ast.literal_eval(tags)
+
+            current_entity = []
+            current_label = ""
+
+            for token, tag in zip(tokens, tags):
+                if tag.startswith("B-"):
+                    if current_entity:
+                        self.entities_per_doc.append(1)
+                        self.entity_labels.append(current_label)
+                        self.entity_texts.append(" ".join(current_entity))
+                        self.total_entities += 1
+                        current_entity = []
+
+                    current_label = tag[2:]
+                    current_entity = [token]
+
+                elif tag.startswith("I-") and current_entity:
+                    current_entity.append(token)
+
+                elif tag == "O":
+                    if current_entity:
+                        self.entities_per_doc.append(1)
+                        self.entity_labels.append(current_label)
+                        self.entity_texts.append(" ".join(current_entity))
+                        self.total_entities += 1
+                        current_entity = []
+
+            # Dernière entité en fin de phrase
+            if current_entity:
+                self.entities_per_doc.append(1)
+                self.entity_labels.append(current_label)
+                self.entity_texts.append(" ".join(current_entity))
+                self.total_entities += 1
+
 
 def main():
     """

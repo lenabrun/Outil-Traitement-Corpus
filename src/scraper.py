@@ -12,6 +12,7 @@ from bs4 import BeautifulSoup
 import time
 import os
 from urllib.parse import urljoin
+import spacy
 import pandas as pd
 from pathlib import Path
 
@@ -102,7 +103,7 @@ class ArticleScraper:
             except requests.RequestException as e:
                 print(f"Erreur requête pour {url}: {e}")
     
-    def safe_to_csv(self, csv_path: Path):
+    def save_to_csv(self, csv_path: Path):
         """
         Sauvegarde le corpus en DataFrame CSV.
         
@@ -112,7 +113,6 @@ class ArticleScraper:
         df.to_csv(csv_path, index=False, encoding="utf-8")
         print(f"{len(df)} documents enregistrés dans {csv_path}")
 
-    
 def main():
     scraper = ArticleScraper(
         base_url = "https://theconversation.com/fr/sante?page={}",
@@ -120,7 +120,7 @@ def main():
     )
     scraper.collect_urls(num_pages=50)
     scraper.scrape_articles()
-    scraper.safe_to_csv(scraper.output_dir/"corpus.csv")
+    scraper.save_to_csv(scraper.output_dir/"corpus.csv")
 
 if __name__ == "__main__":
     main()

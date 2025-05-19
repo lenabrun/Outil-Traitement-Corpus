@@ -1,0 +1,47 @@
+{
+    "eval_loss": 0.4868029057979584,
+    "eval_AnatomicalStructure": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "number": 33
+    },
+    "eval_Disease": {
+        "precision": 0.5250501002004008,
+        "recall": 0.5610278372591007,
+        "f1": 0.5424430641821946,
+        "number": 467
+    },
+    "eval_MISC": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "number": 120
+    },
+    "eval_MedicalProcedure": {
+        "precision": 0.35737704918032787,
+        "recall": 0.23390557939914164,
+        "f1": 0.28274967574578475,
+        "number": 466
+    },
+    "eval_MedicationVaccine": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "number": 95
+    },
+    "eval_Symptom": {
+        "precision": 0.2923076923076923,
+        "recall": 0.06884057971014493,
+        "f1": 0.11143695014662755,
+        "number": 276
+    },
+    "eval_overall_precision": 0.4487917146144994,
+    "eval_overall_recall": 0.2676733013040494,
+    "eval_overall_f1": 0.3353396388650043,
+    "eval_overall_accuracy": 0.9075712881022615,
+    "eval_runtime": 18.066,
+    "eval_samples_per_second": 27.676,
+    "eval_steps_per_second": 6.919,
+    "epoch": 1.0
+}
