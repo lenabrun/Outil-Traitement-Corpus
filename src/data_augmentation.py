@@ -1,3 +1,7 @@
+"""
+Module d'augmentation d'un jeu de données NER dans un corpus de textes.
+"""
+
 import random
 import pandas as pd
 import ast

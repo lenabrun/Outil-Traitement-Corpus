@@ -6,6 +6,7 @@ et applique une tokenisation. Le résultat est sauvegardé dans un nouveau fichi
 """
 
 import re
+import ast
 import json
 from pathlib import Path
 import pandas as pd
@@ -40,12 +41,12 @@ class TextPreprocessor:
         """
         if pd.isnull(text):
             return ""
-        text = self.html_tags.sub('', text) # Suppression des balises HTML
-        text = self.ui_elements.sub('', text)   # Suppression des éléments d'interface utilisateur
-        text = text.lower() # Convertir en minuscules
-        text = text.replace('«', '"').replace('»', '"').replace('’', "'") # Remplacer les guillemets français par des guillemets anglais
-        text = re.sub(r'\s+', ' ', text)    # Supprimer les espaces multiples
-        text = text.strip() # Supprimer les espaces en début et fin de texte
+        text = self.html_tags.sub('', text)
+        text = self.ui_elements.sub('', text)
+        text = text.lower()
+        text = text.replace('«', '"').replace('»', '"').replace('’', "'")
+        text = re.sub(r'\s+', ' ', text)
+        text = text.strip()
         return text
     
     def process_corpus(self):
@@ -103,6 +104,9 @@ class TextPreprocessor:
         :param random_state: Graine pour le générateur de nombres aléatoires.
         """
         df = pd.read_csv(input_csv)
+        df["tokens"] = df["tokens"].apply(ast.literal_eval)
+        df["ner_tags"] = df["ner_tags"].apply(ast.literal_eval)
+        df = df.sample(n=5000, random_state=42)
         train_dev, test = train_test_split(df, test_size=test_size, random_state=random_state)
         train, dev = train_test_split(train_dev, test_size=dev_size / (1 - test_size), random_state=random_state)
 

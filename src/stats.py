@@ -146,7 +146,6 @@ class EntityStats:
             return
 
         for tokens, tags in zip(df["tokens"], df["ner_tags"]):
-            # Évalue les chaînes littérales (si les colonnes sont enregistrées comme listes de str)
             tokens = ast.literal_eval(tokens)
             tags = ast.literal_eval(tags)
 
@@ -176,7 +175,6 @@ class EntityStats:
                         self.total_entities += 1
                         current_entity = []
 
-            # Dernière entité en fin de phrase
             if current_entity:
                 self.entities_per_doc.append(1)
                 self.entity_labels.append(current_label)

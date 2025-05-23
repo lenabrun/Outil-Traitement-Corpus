@@ -1,3 +1,14 @@
+"""
+Module pour l'annotation automatique d'un corpus médical en français à l'aide d'un modèle de type Transformers.
+
+Ce module propose une classe `MedicalAnnotator` permettant de :
+- Annoter un corpus avec des entités nommées médicales selon le schéma BIO.
+- Corriger les séquences BIO invalides produites automatiquement.
+- Sauvegarder les corpus annotés ou corrigés au format CSV.
+
+Modèle utilisé par défaut : `TypicaAI/HealthcareNER-Fr`
+"""
+
 from transformers import AutoTokenizer, AutoModelForTokenClassification
 import torch
 import pandas as pd
@@ -5,6 +16,15 @@ from tqdm import tqdm
 from typing import List
 
 class MedicalAnnotator:
+    """
+    Annotateur médical basé sur un modèle Transformers pour l'extraction d'entités nommées (NER).
+
+    Cette classe permet :
+    - L'annotation automatique d'un fichier CSV contenant des phrases médicales.
+    - La correction de séquences BIO mal formées.
+    
+    :param model_name: Nom du modèle pré-entraîné à utiliser (par défaut : TypicaAI/HealthcareNER-Fr)
+    """
     def __init__(self, model_name="TypicaAI/HealthcareNER-Fr"):
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForTokenClassification.from_pretrained(model_name)
@@ -12,6 +32,13 @@ class MedicalAnnotator:
 
     
     def annotate_csv(self, input_csv_path, output_csv_path, text_column="sentence"):
+        """
+        Annote un fichier CSV contenant des phrases médicales avec des entités nommées (NER) en utilisant le modèle spécifié.
+
+        :param input_csv_path: Chemin du fichier CSV d'entrée contenant une colonne de texte.
+        :param output_csv_path: Chemin du fichier de sortie où enregistrer les tokens et étiquettes BIO.
+        :param text_column: Nom de la colonne contenant le texte à annoter (par défaut : "sentence")
+        """
         df = pd.read_csv(input_csv_path)
         annotated_rows = []
 
@@ -50,12 +77,14 @@ class MedicalAnnotator:
 
     def fix_bio_labels(self, labels: List[str]) -> List[str]:
         """
-        Corrige les séquences BIO invalides :
-        - Chaînes de B-XXX consécutifs → B-XXX, I-XXX, I-XXX, ...
-        - I-XXX isolés ou mal enchaînés → B-XXX
+        Corrige les séquences BIO invalides générées automatiquement.
 
-        :param labels: Liste des étiquettes prédites
-        :return: Liste corrigée des étiquettes BIO
+        Règles appliquées :
+        - Deux B-XXX consécutifs sont transformés en B-XXX, I-XXX, ...
+        - Une I-XXX isolée ou mal chaînée est transformée en B-XXX.
+
+        :param labels: Liste des étiquettes dans le format BIO à corriger.
+        :return: Nouvelle liste d'étiquettes corrigées au format BIO.
         """
         fixed_labels = []
         prev_entity = None
@@ -101,7 +130,10 @@ class MedicalAnnotator:
     
     def correct_bio_in_csv(self, input_csv_path: str, output_csv_path: str):
         """
-        Corrige les erreurs dans les étiquettes BIO d'un fichier CSV déjà annoté.
+        Corrige les erreurs de format BIO dans un fichier CSV déjà annoté.
+
+        Le fichier doit contenir deux colonnes : 'tokens' et 'ner_tags' avec des listes de tokens et d'étiquettes.
+        Cette méthode applique fix_bio_labels() à chaque ligne du fichier.
 
         :param input_csv_path: Chemin vers le fichier annoté (ex: auto-annotated.csv, train.csv)
         :param output_csv_path: Chemin où sauvegarder le fichier corrigé
