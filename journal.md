@@ -172,6 +172,20 @@ Je crée ensuite trois fonctions :
 - `display_results()` : fonction qui affiche les résultats statistiques dans la console.
 - `plot_entity_distribution()` : fonction qui affiche un graphique de la répartition des types d'entités dans le corpus.
 
+**Statistiques globales**  
+Nombre de documents : 445150  
+Nombre total d'entités : 445150  
+Nombre moyen d'entités par document : 1.00  
+
+**Répartition des types d'entités**  
+Symptom: 104050  
+Disease: 103750  
+MedicalProcedure: 146200  
+AnatomicalStructure: 14000  
+MedicationVaccine: 35250  
+MISC: 41900  
+
+
 
 ## TP 4
 ### Augmentation des données
@@ -200,6 +214,7 @@ Puis j'utilise une deuxième fonction `augment_dataset()` qui applique la logiqu
 ## TP 5
 ### Fine-tuning du modèle
 
+Avant de passer au fine-tuning du modèle, j'ai séparé mon corpus en trois sous-ensembles à l'aide de ma fonction `split_corpus()` du module `utils.py`. J'ai pris uniquement une petite partie du corpus global après l'augmentation des données car mon ordinateur ne pouvait pas traiter autant de données.  
 Pour cette étape de fine-tuning, je choisis le modèle [CamemBERT NER](https://huggingface.co/Jean-Baptiste/camembert-ner) sur Hugging Face et je crée un script `train_ner.py` dédié à cela.
 
 Les jeux d’entraînement et de validation sont chargés et les colonnes tokens et ner_tags sont converties depuis des chaînes en listes, puis transformées en objets de type Dataset (de la bibliothèque `datasets` de Hugging Face) dans un fonction `load_csv_ner()`. Cela permet de bénéficier des méthodes optimisées de Hugging Face pour le traitement par lot et l'entraînement.
