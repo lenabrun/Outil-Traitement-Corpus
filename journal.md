@@ -37,162 +37,109 @@
 ## TP 2
 ### Récupération du corpus
 
-Pour récupérer des articles scientifiques, j'ai d'abord consulté le `robots.txt` du site theconversations.com pour ensuite pouvoir scrapper les articles de la section santé. Pour ce module `scrapper.py`, j'ai utilisé les librairies python `requests` et `BeautifulSoup`. J'ai récupéré les articles des 50 premières pages pour avoir un peu plus de 3000 articles dans mon corpus. J'ai ensuite ouvert le code source d'une des pages pour pouvoir retenir quelle balise html contient les urls des articles. J'espace les requêtes d'une seconde chacune pour respecter les bonnes pratiques.
+Pour récupérer des articles scientifiques, je consulte d'abord le `robots.txt` du site theconversations.com pour ensuite pouvoir scrapper les articles de la section santé. Pour ce module `scraper.py`, je crée une classe `ArticleScraper` et j'utilise  les librairies python `requests` et `BeautifulSoup`. Dans une fonction `collect_urls()`, je récupère les articles des 25 premières pages pour avoir un peu plus de 1500 articles dans mon corpus, en ouvrant au préalable le code source d'une des pages pour pouvoir retenir quelle balise html contient les urls des articles. J'espace les requêtes d'une seconde chacune pour respecter les bonnes pratiques.
 
 ```
-for page_num in range(1, 50):
-    url = base_url.format(page_num)
-    res = requests.get(url, headers=headers)
-    if res.status_code == 200:
-        soup = BeautifulSoup(res.text, "html.parser")
-        articles = soup.find_all("div", class_="relative")
-        for article in articles:
-            link = article.find("a")
-            if link:
-                article_url = urljoin("https://theconversation.com", link['href'])
-                article_urls.append(article_url)
-    else:
-        print(f"Erreur page {page_num}: {res.status_code}")
-    time.sleep(1)  # éviter de spammer le serveur
+    def collect_urls(self, num_pages: int = 50):
+        """
+        Récupère les URLs des articles sur plusieurs pages.
+
+        :param num_pages: Nombre de pages à parcourir.
+        """
+        for page_num in range(1, num_pages + 1):
+            url = self.base_url.format(page_num)
+            try:
+                res = requests.get(url, headers=self.headers)
+                res.raise_for_status()
+                soup = BeautifulSoup(res.text, "html.parser")
+                articles = soup.find_all("div", class_="relative")
+                for article in articles:
+                    link = article.find("a")
+                    if link:
+                        article_url = urljoin("https://theconversation.com", link['href'])
+                        self.article_urls.append(article_url)
+            except requests.RequestException as e:
+                print(f"Erreur page {page_num}: {e}")
+            time.sleep(1)  # éviter de spammer le serveur
+
+        print(f"{len(self.article_urls)} articles trouvés.")
 ```
 
-Grâce à cette liste d'urls, je peux ensuite ouvrir la page d'un article et identifier quelle balise contient le contenu textuel. Je réutilise le titre des articles pour les utiliser dans le nom des fichiers. Puis je crée un Dataframe avec la librairie Pandas qui permet d'accéder aux données facilement. Une première colonne `filename` du fichier au format CSV est dédiée au nom de l'article et la deuxième `text` à son contenu.
+Grâce à cette liste d'urls, je peux ensuite ouvrir la page d'un article et identifier quelle balise contient le contenu textuel pour l'extraire dans une autre fonction `scrape_articles()`. Je réutilise le titre des articles pour les utiliser dans le nom des fichiers. Puis je crée un Dataframe avec la librairie Pandas qui permet d'accéder aux données facilement. Une première colonne `filename` du fichier au format CSV est dédiée au nom de l'article et la deuxième `text` à son contenu. Je sauvegarde le contenu textuel à la fois au format .txt mais aussi .csv grâce à une autre fonction `save_to_csv()`.
 
 ```
-for idx, url in enumerate(article_urls, start=1):
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        soup = BeautifulSoup(response.text, 'html.parser')
-        content_div = soup.find('div', itemprop='articleBody')
-        if content_div:
-            paragraphs = content_div.find_all('p')
-            article_text = '\n'.join([para.get_text() for para in paragraphs])
+    def scrape_articles(self):
+        """
+        Scrape le contenu de chaque article et le sauvegarde dans un fichier.
+        """
+        # Scraper les articles
+        for idx, url in enumerate(self.article_urls, start=1):
+            try:
+                response = requests.get(url, headers=self.headers)
+                response.raise_for_status()
+                soup = BeautifulSoup(response.text, 'html.parser')
+                
+                # Extraction du contenu
+                content_div = soup.find('div', itemprop='articleBody')
+                if not content_div:
+                    print(f"Contenu non trouvé pour {url}")
+                    continue
 
-            # Nettoyer le titre pour en faire un nom de fichier
-            title_tag = soup.find('h1')
-            if title_tag:
-                title = title_tag.get_text().strip()
+                paragraphs = content_div.find_all('p')
+                article_text = '\n'.join([para.get_text() for para in paragraphs])
+
+                # Création du nom de fichier à partir du titre
+                title_tag = soup.find('h1')
+                title = title_tag.get_text().strip() if title_tag else "article"
                 filename = f"{idx:03d}_{title[:50].replace(' ', '_').replace('/', '-')}.txt"
-            else:
-                filename = f"{idx:03d}_article.txt"
+                filepath = self.output_dir/filename
 
-            filepath = output_folder / filename
-            with open(filepath, 'w', encoding='utf-8') as f:
-                f.write(article_text)
+                # Sauvegarde dans un fichier texte
+                with open(filepath, 'w', encoding='utf-8') as f:
+                    f.write(article_text)
 
-            if article_text:
-                docs.append({
-                    "filename": filename,
-                    "text": article_text
-                })
+                # Ajout au DataFrame
+                if article_text.strip():
+                    self.docs.append({
+                        "filename": filename,
+                        "text": article_text
+                    })
+                    print(f"Article sauvegardé : {filepath}")
+            except requests.RequestException as e:
+                print(f"Erreur requête pour {url}: {e}")
 
-            print(f"Article sauvegardé : {filepath}")
-        else:
-            print(f"Contenu principal non trouvé pour l'article {url}.")
-    else:
-        print(f"Erreur lors de la requête pour l'article {url}: {response.status_code}")
 ```
 
+#
 ### Évaluation des données
 
-1. Pertinence des données
+1. Pertinence des données :  
 Les articles provenant de la section santé de The Conversation sont généralement rédigés par des universitaires et des chercheurs, ce qui garantit une certaine qualité et pertinence pour l'extraction d'entités nommées dans le domaine médical.
 
-2. Types de données présentes
+2. Types de données présentes :  
  Le corpus est constitué de textes journalistiques traitant de sujets médicaux et de santé publique. Ces textes peuvent contenir des entités telles que des noms de maladies, de médicaments, d'institutions médicales, etc.
 
-3. Statistiques exploitables
+3. Statistiques exploitables :  
 Après le prétraitement, il serait intéressant de calculer des statistiques telles que la fréquence des entités nommées, la distribution des longueurs des articles, ou encore la densité d'entités par article.
 
-4. Attributs majeurs
+4. Attributs majeurs :  
 Les attributs clés du corpus sont les colonnes `filename` et `text`. Après le nettoyage, il serait utile d'ajouter de nouvelles colonnes, comme `clean_text` pour le texte prétraité, ou `entities` pour les entités extraites.
 
+#
 ### Pré-traitement des données
 
-```
-class TextPreprocessor:
-    """
-    Classe pour le prétraitement de texte, incluant le nettoyage et la lemmatisation.
-    """
+Pour le pré-traitement des données je crée une nouvelle classe `TextPreprocessor` dans le module `utils.py` où j'utilise quelques fonctions dans les premières étapes de mon projet :  
+- `clean_text()` : fonction qui nettoie et normalise un texte donné (balises HTML, guillemets, apostrophes, espaces et marqueurs éditoriaux).
+- `process_corpus()` : fonction qui lit le corpus depuis un fichier .csv, applique le nettoyage à chaque texte et sauvegarde le résultat dans un nouveau fichier .csv.
+- `tokenize_text()` : fonction qui segmente les articles en phrases et tokens, initialise une colonne de 'O' pour l'annotation au format BIO, puis sauvegarde dans un fichier .csv.
+- `split_corpus()` : fonction qui segmente le corpus en trois sous-corpus d'entraînement, de validation et de test.
 
-    def __init__(self, input_csv_path: Path, output_csv_path: Path, model: str = "fr_core_news_sm"):
-        """
-        Initialise le préprocesseur avec les chemins d'entrée et de sortie, et charge le modèle spaCy.
-
-        :param input_csv_path: Chemin vers le fichier CSV d'entrée contenant le corpus.
-        :param output_csv_path: Chemin vers le fichier CSV de sortie pour sauvegarder le corpus nettoyé.
-        :param model: Nom du modèle spaCy à utiliser pour la lemmatisation.
-        """
-        self.input_csv_path = input_csv_path
-        self.output_csv_path = output_csv_path
-        self.nlp = spacy.load(model)
-        self.html_tags = re.compile(r'<[^>]+>')
-        self.ui_elements = re.compile(r'(Abonnez|Partager|Lire aussi)', re.IGNORECASE)
-
-    def clean_text(self, text: str) -> str:
-        """
-        Nettoie et normalise un texte donné.
-        
-        :param text: Texte brut.
-        :return: Texte nettoyé et normalisé.
-        """
-        if pd.isnull(text):
-            return ""
-        text = self.html_tags.sub('', text) # Suppression des balises HTML
-        text = self.ui_elements.sub('', text)   # Suppression des éléments d'interface utilisateur
-        text = text.lower() # Convertir en minuscules
-        text = text.replace('«', '"').replace('»', '"').replace('’', "'") # Remplacer les guillemets français par des guillemets anglais
-        text = re.sub(r'\s+', ' ', text)    # Supprimer les espaces multiples
-        text = text.strip() # Supprimer les espaces en début et fin de texte
-        return text
-    
-    def process_corpus(self):
-        """
-        Lit le corpus depuis le fichier CSV, applique le nettoyage à chaque texte, et sauvegarde le résultat dans un nouveau fichier CSV.
-        """
-        df = pd.read_csv(self.input_csv_path, encoding="utf-8") # Lecture du fichier CSV
-        df['clean_text'] = df['text'].apply(self.clean_text)    # Application du nettoyage à la colonne 'text'
-        self.output_csv_path.parent.mkdir(parents=True, exist_ok=True)  # Création du répertoire de sortie si necessaire
-        df.to_csv(self.output_csv_path, index=False, encoding="utf-8")  # Sauvegarde du DataFrame nettoyé
-        print(f"Corpus nettoyé enregistré dans {self.output_csv_path}")
-
-    def tokenize_text(self, input_csv: Path, output_csv: Path):
-        """
-        Segmente les articles en phrases et tokens, puis sauvegarde dans un CSV.
-        
-        :param input_csv: Chemin vers le fichier CSV d'entrée.
-        :param output_csv: Chemin vers le fichier CSV de sortie.
-        """
-        df = pd.read_csv(input_csv, encoding="utf-8")
-
-        if 'clean_text' not in df.columns:
-            print("La colonne 'clean_text' est absente du fichier.")
-            return
-        
-        lines = []
-        for idx, row in df.iterrows():
-            text = row['clean_text']
-            filename = row.get('filename', f"doc{idx}")
-            doc = self.nlp(text)
-
-            for i, sent in enumerate(doc.sents):
-                tokens = [token.text for token in sent]
-                ner_tags = ["O"] * len(tokens)  # initialiser tous les tags à "O"
-                lines.append({
-                    "filename": filename,
-                    "sentence_id": f"{filename}_s{i}",
-                    "sentence": sent.text.strip(),
-                    "tokens": json.dumps(tokens, ensure_ascii=False),
-                    "ner_tags": json.dumps(ner_tags, ensure_ascii=False)
-                })
-
-        df_output = pd.DataFrame(lines)
-        df_output.to_csv(output_csv, index=False, encoding="utf-8")
-        print(f"{len(df_output)} phrases segmentées sauvegardées dans {output_csv}")
-```
-
-
+#
 ### Annotation des données
+
+Pour l'annotation des données dans un format BIO, j'annote d'abord 10 premières phrases manuellement en reprenant les labels d'un jeu de données médicales pour la même tâche de NER trouvé sur Hugging Face : [MedicalNER_FR](https://huggingface.co/datasets/TypicaAI/MedicalNER_Fr/viewer/default/train?q=vih&row=1837&views%5B%5D=train). Le processus étant extrêmement long, je décide d'essayer d'utiliser un modèle, qui a déjà été entraîné pour annoter ce genre de données, sur mon corpus. Ainsi je choisis le modèle [MedicalNER](https://huggingface.co/blaze999/Medical-NER) qui a été entraîné sur le jeu de données cité juste au dessus.  
+
+Je fais cela en créant une classe `MedicalAnnotator` dans le module `annotator.py` en chargeant le modèle, le tokenizer et le dictionnaire permettant de traduire les indices de prédiction en labels BIO.
 
 ```
 class MedicalAnnotator:
@@ -200,125 +147,14 @@ class MedicalAnnotator:
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForTokenClassification.from_pretrained(model_name)
         self.id2label = self.model.config.id2label
-
-    
-    def annotate_csv(self, input_csv_path, output_csv_path, text_column="sentence"):
-        df = pd.read_csv(input_csv_path)
-        annotated_rows = []
-
-        for sentence in tqdm(df[text_column], desc="Annotating"):
-            encoding = self.tokenizer(sentence, return_tensors="pt", truncation=True)
-            input_ids = encoding["input_ids"]
-            attention_mask = encoding["attention_mask"]
-
-            with torch.no_grad():
-                outputs = self.model(input_ids=input_ids, attention_mask=attention_mask)
-            logits = outputs.logits
-            predictions = torch.argmax(logits, dim=2)
-
-            tokens = self.tokenizer.convert_ids_to_tokens(input_ids[0])
-            labels = [self.id2label[label.item()] for label in predictions[0]]
-
-            final_tokens, final_labels = [], []
-            for token, label in zip(tokens, labels):
-                if token.startswith("▁") or not token.startswith("<"):
-                    if token not in self.tokenizer.all_special_tokens:
-                        cleaned_token = token.replace("▁", "")
-                        final_tokens.append(cleaned_token)
-                        final_labels.append(label)
-            
-            fixed_labels = self.fix_bio_labels(final_labels)
-
-            annotated_rows.append({
-                "tokens": final_tokens,
-                "ner_tags": fixed_labels
-            })
-
-        output_df = pd.DataFrame(annotated_rows)
-        output_df.to_csv(output_csv_path, index=False)
-        print(f"Corpus annoté sauvegardé : {output_csv_path}")
-
-
-    def fix_bio_labels(self, labels: List[str]) -> List[str]:
-        """
-        Corrige les séquences BIO invalides :
-        - Chaînes de B-XXX consécutifs → B-XXX, I-XXX, I-XXX, ...
-        - I-XXX isolés ou mal enchaînés → B-XXX
-
-        :param labels: Liste des étiquettes prédites
-        :return: Liste corrigée des étiquettes BIO
-        """
-        fixed_labels = []
-        prev_entity = None
-        prev_label = "O"
-
-        for I, label in enumerate(labels):
-            if label == "O":
-                fixed_labels.append("O")
-                prev_label = "O"
-                prev_entity = None
-                continue
-
-            # Corriger les labels mal formés (ex: "BDisease", "ISymptom")
-            if "-" in label:
-                tag, entity = label.split("-", 1)
-            else:
-                tag = label[0]
-                entity = label[1:]
-
-            if tag == "B":
-                if prev_label in {"B", "I"} and prev_entity == entity:
-                    # Si on enchaîne plusieurs B-XXX du même type -> on remplace par I-XXX
-                    fixed_labels.append(f"I-{entity}")
-                    prev_label = "I"
-                else:
-                    fixed_labels.append(f"B-{entity}")
-                    prev_label = "B"
-            elif tag == "I":
-                if prev_label not in {"B", "I"} or prev_entity != entity:
-                    # I-XXX mal enchaîné → devient B-XXX
-                    fixed_labels.append(f"B-{entity}")
-                    prev_label = "B"
-                else:
-                    fixed_labels.append(f"I-{entity}")
-                    prev_label = "I"
-            else:
-                fixed_labels.append(label)
-                prev_label = tag
-
-            prev_entity = entity
-
-        return fixed_labels
-    
-    def correct_bio_in_csv(self, input_csv_path: str, output_csv_path: str):
-        """
-        Corrige les erreurs dans les étiquettes BIO d'un fichier CSV déjà annoté.
-
-        :param input_csv_path: Chemin vers le fichier annoté (ex: auto-annotated.csv, train.csv)
-        :param output_csv_path: Chemin où sauvegarder le fichier corrigé
-        """
-        df = pd.read_csv(input_csv_path)
-
-        if "ner_tags" not in df.columns:
-            raise ValueError(f"Colonne 'ner_tags' manquante dans {input_csv_path}")
-
-        corrected_rows = []
-
-        for _, row in df.iterrows():
-            tokens = eval(row["tokens"]) if isinstance(row["tokens"], str) else row["tokens"]
-            labels = eval(row["ner_tags"]) if isinstance(row["ner_tags"], str) else row["ner_tags"]
-
-            fixed_labels = self.fix_bio_labels(labels)
-
-            corrected_rows.append({
-                "tokens": tokens,
-                "ner_tags": fixed_labels
-            })
-
-        corrected_df = pd.DataFrame(corrected_rows)
-        corrected_df.to_csv(output_csv_path, index=False)
-        print(f"BIO labels corrigés et enregistrés dans : {output_csv_path}")
 ```
+
+J'utilise ensuite trois autres fonctions dans mon processus d'annotation :  
+- `annotate_csv()` : fonction qui lit un corpus et y applique l'annotation automatique NER phrase par phrase.
+- `fix_bio_labels()` : fonction qui corrige les séquences BIO invalides en appliquant deux règles principales :
+   - si plusieurs B-XXX consécutifs sont détectés pour le même type d’entité, les suivants sont convertis en I-XXX.
+   - si un I-XXX est mal positionné (ex : au début ou après un O), il est corrigé en B-XXX.
+- `correct_bio_in_csv()` : fonction qui permet de corriger un fichier déjà annoté.
 
 ## TP 3
 ### Visualisation et statistiques
@@ -340,7 +176,7 @@ Je crée ensuite trois fonctions :
 ## TP 4
 ### Augmentation des données
 
-J'ai implémenté l'augmentation à travers la classe `NERDataAugmentor` du module `data_augmentation.py`. J'initialise deux attributs de la classe : un dictionnaire contenant pour chaque type d'entité une liste de variantes ou synonymes utilisés comme base de remplacement, et une probabilité que chaque entité éligible soit remplacée, ce qui permet de contrôler l'intensité de l'augmentation des données.  
+J'implémente l'augmentation à travers la classe `NERDataAugmentor` du module `data_augmentation.py`. J'initialise deux attributs de la classe : un dictionnaire contenant pour chaque type d'entité une liste de variantes ou synonymes utilisés comme base de remplacement, et une probabilité que chaque entité éligible soit remplacée, ce qui permet de contrôler l'intensité de l'augmentation des données.  
 
 Je crée ensuite une fonction `substitute_entities()` pour appliquer le remplacement des entités avec une série de conditions : 
  
@@ -364,18 +200,11 @@ Puis j'utilise une deuxième fonction `augment_dataset()` qui applique la logiqu
 ## TP 5
 ### Fine-tuning du modèle
 
-```
-import pandas as pd
-import ast
-from datasets import Dataset, DatasetDict
-from transformers import TrainingArguments
-from transformers import CamembertTokenizerFast, CamembertForTokenClassification, Trainer, DataCollatorForTokenClassification
-from sklearn.model_selection import train_test_split
-import numpy as np
-import torch
-import evaluate
+Pour cette étape de fine-tuning, je choisis le modèle [CamemBERT NER](https://huggingface.co/Jean-Baptiste/camembert-ner) sur Hugging Face et je crée un script `train_ner.py` dédié à cela.
 
-# 1. Chargement des données depuis CSV
+Les jeux d’entraînement et de validation sont chargés et les colonnes tokens et ner_tags sont converties depuis des chaînes en listes, puis transformées en objets de type Dataset (de la bibliothèque `datasets` de Hugging Face) dans un fonction `load_csv_ner()`. Cela permet de bénéficier des méthodes optimisées de Hugging Face pour le traitement par lot et l'entraînement.
+
+```
 def load_csv_ner(path):
     df = pd.read_csv(path)
     df["tokens"] = df["tokens"].apply(ast.literal_eval)
@@ -389,15 +218,19 @@ datasets = DatasetDict({
     "train": train_dataset,
     "validation": val_dataset
 })
+```
 
-# 2. Créer un mapping id <-> label
+Les mappings `label2id` et `id2label` sont ensuite créés. Ces dictionnaires assurent la conversion entre les étiquettes BIO (B-SYMPTOM, I-DISEASE, etc.) et des indices numériques, requis par le modèle lors de l’entraînement.
+
+```
 unique_labels = sorted({label for seq in datasets["train"]["ner_tags"] for label in seq})
 label2id = {label: idx for idx, label in enumerate(unique_labels)}
 id2label = {idx: label for label, idx in label2id.items()}
+```
 
-# 3. Tokenisation
-tokenizer = CamembertTokenizerFast.from_pretrained("camembert-base")
+Puis dans une fonction `tokenize_and_align_labels()`, il est question d’aligner correctement les étiquettes BIO sur les sous-tokens générés par le tokenizer (CamemBERT utilise WordPiece). Le label est attribué uniquement au premier sous-token d’un mot et les autres sous-tokens reçoivent l’étiquette -100, pour être ignorés dans la fonction de perte.
 
+```
 def tokenize_and_align_labels(example):
     tokenized_inputs = tokenizer(example["tokens"], truncation=True, is_split_into_words=True)
 
@@ -417,18 +250,11 @@ def tokenize_and_align_labels(example):
 
     tokenized_inputs["labels"] = label_ids
     return tokenized_inputs
+```
 
-tokenized_datasets = datasets.map(tokenize_and_align_labels, batched=False)
+J'utilise ensuite la métrique `SeqEval` qui calcule la précision, le rappel et le F1-score au niveau des entités. La fonction `compute_metrics()` permet de comparer les labels véridiques aux labels prédits par le modèle et d'ainsi calculer les résultats de l'entraînement.
 
-# 🧾 4. Modèle
-model = CamembertForTokenClassification.from_pretrained(
-    "camembert-base",
-    num_labels=len(label2id),
-    id2label=id2label,
-    label2id=label2id
-)
-
-# 5. Évaluation
+```
 metric = evaluate.load("seqeval")
 
 def compute_metrics(p):
@@ -444,8 +270,11 @@ def compute_metrics(p):
         for prediction, label_seq in zip(predictions, labels)
     ]
     return metric.compute(predictions=true_predictions, references=true_labels)
+```
 
-# 6. Entraînement
+Ayant un ordinateur peu puissant, j'ajuste les hyperparamètres pour que le temps de traitement soit plus raisonnable. J'ai limité le nombre d'epochs à 1 mais cela diminue drastiquement les performances du modèles, chose qui se reflète dans les résultats que j'ai pu obtenir à la fin de cet entraînement.
+
+```
 args = TrainingArguments(
     output_dir="./camembert-ner",
     eval_strategy="epoch",
@@ -457,109 +286,43 @@ args = TrainingArguments(
     save_strategy="epoch",
     logging_dir="./logs",
 )
-
-trainer = Trainer(
-    model=model,
-    args=args,
-    train_dataset=tokenized_datasets["train"],
-    eval_dataset=tokenized_datasets["validation"],
-    tokenizer=tokenizer,
-    data_collator=DataCollatorForTokenClassification(tokenizer),
-    compute_metrics=compute_metrics,
-)
-
-trainer.train()
-
-trainer.save_model("camembert-ner-finetuned")
-tokenizer.save_pretrained("camembert-ner-finetuned")
-
-# Évaluation après entraînement
-metrics = trainer.evaluate()
-print(metrics)
-
-# Sauvegarde des métriques
-import json
-with open("camembert-ner-finetuned/train_metrics.json", "w") as f:
-    json.dump(metrics, f, indent=4)
 ```
+
 
 ## TP 6
 ### Évaluation du modèle
-```
-import ast
-import pandas as pd
-import numpy as np
-from datasets import Dataset
-from transformers import CamembertTokenizerFast, CamembertForTokenClassification, Trainer, DataCollatorForTokenClassification
-import evaluate
-import json
 
-# Charger données de test
-def load_csv_ner(path):
-    df = pd.read_csv(path)
-    df["tokens"] = df["tokens"].apply(ast.literal_eval)
-    df["ner_tags"] = df["ner_tags"].apply(ast.literal_eval)
-    return Dataset.from_pandas(df)
+Je teste maintenant mon modèle sur le sous-ensemble de test pour juger sa robustesse dans des situations réelles. Je commence dans un nouveau script `evaluate_ner.py` par charger le modèle que j'avais enregistré après l'entraînement pour pouvoir le réutiliser, puis je fais le mapping et j'applique la fonction `tokenize_and_align_labels()`. J'utilise les mêmes métriques que durant l'entraînement et j'obtiens des résultats assez mitigés.
 
-test_dataset = load_csv_ner("data/splits/test.csv")
+**Analyse globale**
 
-# Charger tokenizer et modèle fine-tuné
-tokenizer = CamembertTokenizerFast.from_pretrained("camembert-ner-finetuned")
-model = CamembertForTokenClassification.from_pretrained("camembert-ner-finetuned")
+| **Métrique**      | **Valeur** |
+| ----------------- | ---------- |
+| F1-score global   | **33.1 %** |
+| Précision globale | 44.6 %     |
+| Rappel global     | 26.4 %     |
+| Accuracy globale  | 90.5 %     |
+| Perte (loss)      | 0.485      |
 
-# Mapping id2label
-label_list = model.config.id2label
-label_list = [label_list[i] for i in range(len(label_list))]
-label2id = {label: i for i, label in enumerate(label_list)}
-id2label = {i: label for label, i in label2id.items()}
+- Le F1-score global est relativement faible (33.1 %), ce qui indique que le modèle a des difficultés à prédire correctement les entités nommées dans de nombreuses catégories, malgré une précision modérée.
+- L’accuracy (90.5 %) est élevée, mais ce chiffre peut être trompeur dans les tâches de NER : il inclut aussi tous les tokens non annotés (typiquement "O") qui sont majoritaires.
+- Le rappel global très bas (26.4 %) montre que le modèle rate une majorité des entités attendues.
 
-# Tokenisation avec alignement
-def tokenize_and_align_labels(example):
-    tokenized_inputs = tokenizer(example["tokens"], truncation=True, is_split_into_words=True)
-    labels = []
-    word_ids = tokenized_inputs.word_ids()
-    previous_word_idx = None
-    label_ids = []
-    for word_idx in word_ids:
-        if word_idx is None:
-            label_ids.append(-100)
-        elif word_idx != previous_word_idx:
-            label_ids.append(label2id[example["ner_tags"][word_idx]])
-        else:
-            label_ids.append(label2id[example["ner_tags"][word_idx]] if example["ner_tags"][word_idx].startswith("I-") else -100)
-        previous_word_idx = word_idx
-    tokenized_inputs["labels"] = label_ids
-    return tokenized_inputs
+**Analyse par entité**
 
-tokenized_test = test_dataset.map(tokenize_and_align_labels, batched=False)
+- *Disease* : le modèle parvient relativement bien à détecter les entités de type "Disease".
+- *MedicalProcedure* : Le modèle identifie incorrectement ou trop peu de procédures médicales. Il y a peut-être une trop grande variabilité lexicale.
+- *Symptom* : Beaucoup de faux positifs (bonne précision, faible rappel), ce qui suggère que le modèle devine trop souvent des symptômes sans base suffisante. Cela indique un surapprentissage possible sur certaines expressions symptomatiques.
+- *AnatomicalStructure, Medication/Vaccine, MISC* : Le modèle échoue totalement à détecter ces entités car soit  elles sont absentes ou rares dans l'entraînement, soit leur vocabulaire est trop variable pour être capté sans plus de données. Nous pouvons voir dans le fichier `/outputs/label_distribution.png` que ces trois labels sont en effet les moins représentés sur tout le corpus.
 
-# Métrique
-metric = evaluate.load("seqeval")
+**Hypothèses**
 
-def compute_metrics(p):
-    predictions, labels = p
-    predictions = np.argmax(predictions, axis=2)
-    true_labels = [
-        [id2label[label] for (pred, label) in zip(prediction, label_seq) if label != -100]
-        for prediction, label_seq in zip(predictions, labels)
-    ]
-    true_predictions = [
-        [id2label[pred] for (pred, label) in zip(prediction, label_seq) if label != -100]
-        for prediction, label_seq in zip(predictions, labels)
-    ]
-    return metric.compute(predictions=true_predictions, references=true_labels)
+À partir de ces résultats, nous pouvons formuler plusieurs hypothèses :  
+1. Déséquilibre des classes :  
+Certaines entités comme  *Medication/Vaccine* et *AnatomicalStructure* sont probablement sous-représentées en opposition aux autres classes, ce qui provoque un déséquilibre dans les performances du modèle qui favorise les classes sur-représentées au détriment des classes plus rares. Cela pourrait être amélioré en s'assurant que chaque label occupe une proportion équitable du corpus.
 
-# Évaluation avec Trainer
-trainer = Trainer(
-    model=model,
-    tokenizer=tokenizer,
-    data_collator=DataCollatorForTokenClassification(tokenizer),
-    compute_metrics=compute_metrics,
-)
+2. Qualité ou volume du corpus d'entraînement :  
+Le nombre d'exemples annotés par type pourrait être insuffisant pour permettre une généralisation efficace, notamment pour les catégories à F1=0. Ayant été limitée par le matériel utilisé, le modèle pourrait être largement amélioré en augmentant simplement le nombre d'épochs et la taille des sous-corpus d'entraînement, de validation et de test.
 
-metrics = trainer.evaluate(tokenized_test)
-print(metrics)
-
-with open("camembert-ner-finetuned/test_metrics.json", "w") as f:
-    json.dump(metrics, f, indent=4)
-```
+3. Étiquettes mal encodées (BIO) :  
+Malgré les fonctions de correction de l'annotation BIO, il reste encore de nombreuses erreurs comme des I- isolés ou mal formés dû à l'utilisation de l'annotation automatique d'un modèle pré-entrainé, ce qui nuit à l’apprentissage de mon modèle. Si le temps le permettait, en annotant manuellement une quantité suffisante de phrases et sans avoir recours à l'annotation automatique d'un modèle pré-entraîné, la fiabilité de l'annotation aurait pu être mieux assurée pour ensuite obtenir des résultats plus représentatifs des performances du modèle même.
